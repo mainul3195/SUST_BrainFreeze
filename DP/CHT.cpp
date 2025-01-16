@@ -1,19 +1,22 @@
-struct CHT {vector<ll> m, b;int ptr = 0;
-bool bad(int l1, int l2, int l3) {
-return 1.0 * (b[l3] - b[l1]) * (m[l1] - m[l2])  <= 1.0 * (b[l2] - b[l1]) * (m[l1] - m[l3]); //(slope dec+query min),(slope inc+query max)
-// return 1.0 * (b[l3] - b[l1]) * (m[l1] - m[l2])  > 1.0 * (b[l2] - b[l1]) * (m[l1] - m[l3]); //(slope dec+query max), (slope inc+query min)
-}void add(ll _m, ll _b) {m.push_back(_m);b.push_back(_b);int s = m.size();while (s >= 3 && bad(s - 3, s - 2, s - 1)) {
-s--;m.erase(m.end() - 2);b.erase(b.end() - 2);}}ll f(int i, ll x) {return m[i] * x + b[i];
-}//(slope dec+query min), (slope inc+query max) -> x increasing
-//(slope dec+query max), (slope inc+query min) -> x decreasing
-ll query(ll x) {if (ptr >= m.size()) ptr = m.size() - 1;
-while (ptr < m.size() - 1 && f(ptr + 1, x) < f(ptr, x)) ptr++;return f(ptr, x);
-}ll bs(int l, int r, ll x) {int mid = (l + r) / 2;
-if (mid + 1 < m.size() && f(mid + 1, x) < f(mid, x)) return bs(mid + 1, r, x); // > for max
-if (mid - 1 >= 0 && f(mid - 1, x) < f(mid, x)) return bs(l, mid - 1, x); // > for max
-return f(mid, x);}};ll n, c;ll a[N], h[N];ll dp[N];
-CHT cht;void Solve() {cin >> n >> c;for (int i = 1; i <= n; i++) cin >> h[i];
-CHT C;dp[1] = 0;C.add(-2LL * h[1], h[1]*h[1] + dp[1]);for (int i = 2; i <= n; i++) {
-dp[i] = c + h[i] * h[i] + C.query(h[i]);C.add( -2LL * h[i], h[i]*h[i] + dp[i]);}
-cout << dp[n] << endl;
-}//dp[i] = min(dp[j] + (hj - hi)^2 + c)
+lli inf = LLONG_MIN;
+//add lines with -m and -b and return -ans to
+//make this code work for minimums.(not -x)
+struct line {
+lli m, b; mutable function<const line*() > succ; bool operator < (const line& rhs) const {
+  if (rhs.b != inf) return m < rhs.m; const line* s = succ();
+  if (!s) return 0; lli x = rhs.m; return b - s->b < (s->m - m) * x;} };
+
+struct CHT : public multiset<line> {
+ bool bad(iterator y) { auto z = next(y);
+  if (y == begin()) { if (z == end()) return 0; return y -> m == z -> m && y -> b <= z -> b; }
+  auto x = prev(y);
+  if (z == end()) return y -> m == x -> m && y -> b <= x -> b;
+  return 1.0 * (x -> b - y -> b) * (z -> m - y -> m) >= 1.0 * (y -> b - z -> b) * (y -> m - x -> m);}
+ void add(lli m, lli b) {
+  auto y = insert({ m, b }); y->succ = [ = ] { return next(y) == end() ? 0 : &*next(y); };
+  if (bad(y)) { erase(y); return; }
+  while (next(y) != end() && bad(next(y))) erase(next(y)); while (y != begin() && bad(prev(y))) erase(prev(y)); }
+  lli query(lli x) { assert(!empty());
+    auto l = *lower_bound((line) { x, inf });
+    return l.m * x + l.b;}
+};
